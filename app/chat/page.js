@@ -6,12 +6,13 @@ import { useAISettings } from '@/context/AISettingsContext'
 import Sidebar from '@/components/Sidebar'
 
 const QUICK_QUESTIONS = [
-    'আমার এই মাসের খরচ বিশ্লেষণ কর',
-    'কীভাবে বেশি সেভ করতে পারি?',
-    'আমার সবচেয়ে বেশি খরচ কোথায়?',
-    'আমি কি বেশি খরচ করছি?',
-    'আমাকে বাজেট প্ল্যান করতে সাহায্য কর',
-    'দ্রুত ধনী হওয়ার উপায় কী?',
+    '🔮 AI Life Simulator (ভবিষ্যৎ সিমুলেট কর)',
+    '🤖 AI Money Personality (আমার স্বভাব কেমন?)',
+    '🧠 AI Life Event Planner (একটি ইভেন্ট প্ল্যান কর)',
+    '🚨 AI Fraud Detection (কোন অস্বাভাবিক খরচ আছে কি?)',
+    '📈 AI Investment Advisor (রিস্ক অনুযায়ী সাজেশন)',
+    '🎭 AI Money Roast (আমাকে মজার রোস্ট কর!)',
+    '⚖️ AI "What If" (যদি ৫০০০ টাকা সেভ করি, কী হবে?)',
 ]
 
 // ── Markdown-style renderer ──

@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { useAISettings } from '@/context/AISettingsContext'
 import Sidebar from '@/components/Sidebar'
 import { RadialBarChart, RadialBar, ResponsiveContainer } from 'recharts'
 import BengaliNumberInput from '@/components/BengaliNumberInput'
@@ -20,6 +21,7 @@ function Modal({ open, onClose, title, children }) {
 
 export default function GoalsPage() {
     const { user, loading } = useAuth()
+    const { getAIBody } = useAISettings()
     const router = useRouter()
     const [goals, setGoals] = useState([])
     const [showModal, setShowModal] = useState(false)
@@ -28,6 +30,25 @@ export default function GoalsPage() {
     const [fetching, setFetching] = useState(true)
     const [saving, setSaving] = useState(false)
     const [form, setForm] = useState({ title: '', target_amount: '', deadline: '', description: '' })
+
+    const [missionLoading, setMissionLoading] = useState(false)
+    const [missionData, setMissionData] = useState('')
+
+    async function fetchAIMission() {
+        setMissionLoading(true)
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: "আমার বর্তমান লক্ষ্য ও বাজেট পূরণে সাহায্য করবে এমন ৩টি ছোট ও অর্জনযোগ্য ডেইলি/উইকলি আর্থিক মিশন (AI Money Missions) দাও।", userId: user.id, ...getAIBody() })
+            })
+            const data = await res.json()
+            setMissionData(data.reply)
+        } catch (err) {
+            setMissionData('দুঃখিত, সংযোগে সমস্যা হয়েছে।')
+        }
+        setMissionLoading(false)
+    }
 
     const fetchGoals = useCallback(async () => {
         if (!user) return
@@ -81,11 +102,32 @@ export default function GoalsPage() {
                                     <p className="exp-hero-sub">আপনার আর্থিক লক্ষ্য নির্ধারণ করুন এবং এগিয়ে যান</p>
                                 </div>
                             </div>
-                            <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #A855F7, #7C3AED)', boxShadow: '0 6px 24px rgba(139,92,246,0.4)' }} onClick={() => setShowModal(true)}>
-                                <span className="exp-add-btn-icon">+</span><span>নতুন লক্ষ্য</span><div className="exp-add-btn-shine"></div>
-                            </button>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #A855F7, #7C3AED)', boxShadow: '0 6px 24px rgba(139,92,246,0.4)' }} onClick={() => setShowModal(true)}>
+                                    <span className="exp-add-btn-icon">+</span><span>নতুন লক্ষ্য</span><div className="exp-add-btn-shine"></div>
+                                </button>
+                                <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', boxShadow: '0 6px 24px rgba(245,158,11,0.4)' }} onClick={fetchAIMission} disabled={missionLoading}>
+                                    <span>{missionLoading ? '⏳...' : '🎯 AI Missions'}</span><div className="exp-add-btn-shine"></div>
+                                </button>
+                            </div>
                         </div>
                     </div>
+
+                    {(missionLoading || missionData) && (
+                        <div className="gl-glass-card mb-6" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.05), rgba(16,185,129,0.05))', border: '1px solid rgba(245,158,11,0.2)' }}>
+                            <div className="gl-glass-card-inner">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#FCD34D' }}>🎯 AI Money Missions</h3>
+                                    <button onClick={() => setMissionData('')} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 18 }}>✕</button>
+                                </div>
+                                {missionLoading ? (
+                                    <div className="gl-loading-full" style={{ minHeight: 100 }}><div className="exp-loading-ring" style={{ borderTopColor: '#F59E0B' }}></div><p>মিশন তৈরি হচ্ছে...</p></div>
+                                ) : (
+                                    <div style={{ whiteSpace: 'pre-wrap', color: '#F1F5F9', lineHeight: 1.6, fontSize: 14 }}>{missionData}</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {fetching ? (
                         <div className="gl-loading-full"><div className="exp-loading-ring" style={{ borderTopColor: '#A855F7', borderColor: 'rgba(139,92,246,0.15)' }}></div><p>লোড হচ্ছে...</p></div>

@@ -62,13 +62,11 @@ export default function BudgetPage() {
         await Promise.all(
             CATEGORIES.map(cat => {
                 const amount = parseFloat(amounts[cat] || 0)
-                if (amount > 0) {
-                    return fetch('/api/budgets', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_id: user.id, category: cat, amount, month, year })
-                    })
-                }
-                return Promise.resolve()
+                // Allow setting budget to 0 if the user clears the input
+                return fetch('/api/budgets', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: user.id, category: cat, amount, month, year })
+                })
             })
         )
         setSaving(false); fetchData()

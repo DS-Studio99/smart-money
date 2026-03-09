@@ -6,8 +6,10 @@ const AISettingsContext = createContext({})
 // Available OpenRouter models (free + popular)
 export const OPENROUTER_MODELS = [
     { id: 'google/gemini-2.0-flash-lite-001', name: '💎 Gemini 2.0 Flash Lite', desc: 'Google — দ্রুত ও হালকা', free: false },
-    { id: 'google/gemini-2.0-flash-001', name: '💎 Gemini 2.0 Flash', desc: 'Google — শক্তিশালী', free: false },
-    { id: 'deepseek/deepseek-chat', name: '🔬 DeepSeek V3', desc: 'DeepSeek — অনেক শক্তিশালী', free: false },
+    { id: 'google/gemini-2.0-pro-exp-02-05:free', name: '💎 Gemini Pro (Free)', desc: 'Google — সবচেয়ে শক্তিশালী', free: true },
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: '🦙 Llama 3.3 70B', desc: 'Meta — খুব দ্রুত, স্মার্ট', free: true },
+    { id: 'qwen/qwen-2.5-72b-instruct:free', name: '⚡ Qwen 2.5 72B', desc: 'Alibaba — দারুণ বাংলা সাপোর্ট', free: true },
+    { id: 'deepseek/deepseek-r1:free', name: '🔬 DeepSeek R1', desc: 'Reasoning মডেল', free: true },
 ]
 
 const DEFAULT_SETTINGS = {

@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 export async function POST(request) {
     const supabase = createAdminClient()
     const body = await request.json()
-    const { message, userId, aiProvider, aiGeminiKey, aiOpenrouterKey, aiModel, aiReasoning } = body
+    const { message, userId, aiProvider, aiGeminiKey, aiOpenrouterKey, aiModel, aiReasoning, isTest } = body
 
     // Use Bangladesh time (UTC+6)
     const now = new Date(new Date().getTime() + 6 * 60 * 60 * 1000)
@@ -18,15 +18,16 @@ export async function POST(request) {
     console.log(`[api/chat] userId: ${userId}, month: ${month}, year: ${year}, startDate: ${startDate}`)
 
     // Fetch user data — use individual try-catch so one failure doesn't break all
-    let expenses = [], budgets = [], goals = [], profile = null, allExpenses = []
+    let expenses = [], budgets = [], goals = [], loans = [], profile = null, allExpenses = []
 
     try {
-        const [expRes, budRes, goalRes, profRes, allExpRes] = await Promise.all([
+        const [expRes, budRes, goalRes, loanRes, profRes, allExpRes] = await Promise.all([
             supabase.from('expenses').select('*').eq('user_id', userId)
                 .gte('date', startDate).lte('date', endDate)
                 .order('date', { ascending: false }),
             supabase.from('budgets').select('*').eq('user_id', userId).eq('month', month).eq('year', year),
             supabase.from('goals').select('*').eq('user_id', userId),
+            supabase.from('loans').select('*').eq('user_id', userId).eq('status', 'active'),
             supabase.from('profiles').select('*').eq('id', userId).single(),
             supabase.from('expenses').select('amount, category, date').eq('user_id', userId)
                 .gte('date', `${year}-${String(Math.max(1, month - 2)).padStart(2, '0')}-01`)
@@ -38,10 +39,11 @@ export async function POST(request) {
         expenses = expRes.data || []
         budgets = budRes.data || []
         goals = goalRes.data || []
+        loans = loanRes.data || []
         profile = profRes.data || null
         allExpenses = allExpRes.data || []
 
-        console.log(`[api/chat] Data fetched — expenses: ${expenses.length}, budgets: ${budgets.length}, goals: ${goals.length}, profile: ${profile?.name || 'null'}, income: ${profile?.monthly_income || 0}`)
+        console.log(`[api/chat] Data fetched — exp: ${expenses.length}, bud: ${budgets.length}, goals: ${goals.length}, loans: ${loans.length}, profile: ${profile?.name || 'null'}`)
     } catch (err) {
         console.error('[api/chat] Data fetch error:', err.message)
     }
@@ -79,6 +81,13 @@ export async function POST(request) {
     const goalsSummary = goals.map(g => {
         const pct = Number(g.target_amount) > 0 ? Math.round((Number(g.saved_amount) / Number(g.target_amount)) * 100) : 0
         return `${g.title}: লক্ষ্য ৳${Number(g.target_amount).toLocaleString()}, জমা ৳${Number(g.saved_amount).toLocaleString()} (${pct}% সম্পন্ন)`
+    })
+
+    // Loans summary
+    const loansSummary = loans.map(l => {
+        const typeStr = l.type === 'given' ? 'আমি পাবো' : 'আমি দিব'
+        const remaining = Number(l.amount) - Number(l.paid_amount)
+        return `${l.person_name} (${typeStr}): মোট ৳${Number(l.amount).toLocaleString()}, বাকি ৳${remaining.toLocaleString()}`
     })
 
     // Days progress
@@ -124,6 +133,9 @@ ${recentExpenses.length > 0 ? recentExpenses.map(s => `• ${s}`).join('\n') : '
 ══════ লক্ষ্য ও সঞ্চয় ══════
 ${goalsSummary.length > 0 ? goalsSummary.map(s => `• ${s}`).join('\n') : '• কোনো লক্ষ্য সেট করা হয়নি'}
 
+══════ লোন ও ধার ══════
+${loansSummary.length > 0 ? loansSummary.map(s => `• ${s}`).join('\n') : '• কোনো সক্রিয় লোন নেই'}
+
 ══════ মাসিক প্রবণতা (গত ৩ মাস) ══════
 ${Object.entries(monthlyTrend).length > 0 ? Object.entries(monthlyTrend).map(([m, v]) => `• ${m}: ৳${Number(v).toLocaleString()}`).join('\n') : '• পর্যাপ্ত ডাটা নেই'}
 
@@ -137,6 +149,16 @@ ${Object.entries(monthlyTrend).length > 0 ? Object.entries(monthlyTrend).map(([m
 - যদি ডাটা থাকে তাহলে সেটা সরাসরি বিশ্লেষণ করো
 - যদি কোনো ডাটা না থাকে, শুধু তখনই ব্যবহারকারীকে সেটা যোগ করতে বলো
 - টাকার পরিমাণ সবসময় ৳ চিহ্ন দিয়ে লিখো
+
+**স্পেশাল ফিচার নির্দেশনা:**
+১. "AI Life Simulator" বা ভবিষ্যৎ সিমুলেট করতে বললে বর্তমান সেভিংস রেট অনুযায়ী ৫-১০ বছরের একটি সম্ভাব্য গাণিতিক চিত্র তুলে ধরো।
+২. "AI Money Personality" চাইলে ইউজারের খরচ দেখে মজার উপাধি (যেমন- কিপ্টা, হিসেবি, মহারাজ) দাও।
+৩. "AI Life Event Planner" চাইলে (বিয়ে/ট্রাভেল/পড়াশোনা) বাস্তবসম্মত বাজেট প্ল্যান দাও।
+৪. "AI Fraud Detection" বা অস্বাভাবিক খরচ খুঁজতে বললে, বাজেটের তুলনায় অতিরিক্ত বা অপ্রয়োজনীয় খরচের দিকে পয়েন্ট করো।
+৫. "AI Investment Advisor" হিসেবে লো থেকে হাই রিস্ক ইনভেস্টমেন্ট আইডিয়া দাও।
+৬. "AI Money Roast" করতে বললে ইউজারের খরচের অভ্যাস নিয়ে মজার ও ব্যঙ্গাত্মক (funny/savage) রোস্ট করো।
+৭. "AI What If" বা 'যদি' প্রশ্নের উত্তর লজিক্যাল হিসাব করে দাও।
+৮. "AI Money Missions" চাইলে বা মিশন টাস্ক চাইলে ইউজারকে ৩টি ছোট ও অর্জনযোগ্য ডেইলি/উইকলি আর্থিক মিশন দাও।
 `
 
     console.log(`[api/chat] Context preview — expenses: ${expenses.length}, totalExp: ${totalExpenses}, budget: ${totalBudget}, income: ${monthlyIncome}`)
@@ -148,6 +170,7 @@ ${Object.entries(monthlyTrend).length > 0 ? Object.entries(monthlyTrend).map(([m
             openrouterKey: aiOpenrouterKey,
             model: aiModel,
             enableReasoning: aiReasoning,
+            isTest: isTest,
         })
         return NextResponse.json({ reply: text })
     } catch (err) {
