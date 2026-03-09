@@ -3,12 +3,15 @@ self.addEventListener('push', function (event) {
         const data = event.data.json()
         const options = {
             body: data.body,
-            icon: data.icon || '/icon-192x192.png',
-            badge: '/icon-192x192.png',
+            icon: data.icon || '/samrat-avatar.png',
+            badge: '/samrat-avatar.png',
             vibrate: [100, 50, 100],
+            tag: 'smart-money-notif-' + Date.now(), // Unique tag to prevent stacking in some cases, or same tag to overwrite
+            renotify: true,
+            timestamp: Date.now(),
             data: {
                 dateOfArrival: Date.now(),
-                primaryKey: '2'
+                url: data.url || '/notifications'
             }
         }
         event.waitUntil(self.registration.showNotification(data.title, options))
@@ -16,19 +19,19 @@ self.addEventListener('push', function (event) {
 })
 
 self.addEventListener('notificationclick', function (event) {
+    const url = event.notification.data?.url || '/notifications'
     event.notification.close()
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
-            if (clientList.length > 0) {
-                let client = clientList[0]
-                for (let i = 0; i < clientList.length; i++) {
-                    if (clientList[i].focused) {
-                        client = clientList[i]
-                    }
+            for (let i = 0; i < clientList.length; i++) {
+                let client = clientList[i]
+                if (client.url.includes(url) && 'focus' in client) {
+                    return client.focus()
                 }
-                return client.focus()
             }
-            return clients.openWindow('/notifications')
+            if (clients.openWindow) {
+                return clients.openWindow(url)
+            }
         })
     )
 })

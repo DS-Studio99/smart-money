@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase-server'
 import { NextResponse } from 'next/server'
+import { generateAllNotifications } from '@/lib/notificationService'
 
 export async function GET(request) {
     const supabase = createAdminClient()
@@ -36,6 +37,12 @@ export async function POST(request) {
             console.error('[api/expenses] Supabase error:', error)
             return NextResponse.json({ error: error.message }, { status: 500 })
         }
+
+        // Trigger notification check
+        if (data?.user_id) {
+            generateAllNotifications(data.user_id).catch(err => console.error("Notif Error:", err));
+        }
+
         return NextResponse.json(data)
     } catch (err) {
         console.error('[api/expenses] Request error:', err.message)
