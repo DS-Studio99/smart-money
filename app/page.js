@@ -2,15 +2,23 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 
 export default function HomePage() {
     const router = useRouter()
+    const { user, loading: authLoading } = useAuth()
     const [tab, setTab] = useState('login')
     const [form, setForm] = useState({ name: '', email: '', password: '', income: '' })
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [msg, setMsg] = useState('')
     const [isSignupEnabled, setIsSignupEnabled] = useState(true)
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            router.push('/dashboard')
+        }
+    }, [user, authLoading, router])
 
     // Check setting on load
     useEffect(() => {
@@ -68,6 +76,12 @@ export default function HomePage() {
         setMsg('নিবন্ধন সফল! এখন লগইন করুন।')
         setTab('login')
     }
+
+    if (authLoading) return (
+        <div className="gl-auth-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="gl-loading-full"><div className="exp-loading-ring"></div><p style={{ color: '#fff', marginTop: 16 }}>লোড হচ্ছে...</p></div>
+        </div>
+    )
 
     return (
         <div className="gl-auth-page">
