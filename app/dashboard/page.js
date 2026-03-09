@@ -34,6 +34,7 @@ export default function DashboardPage() {
     const [alerts, setAlerts] = useState([])
     const [fetching, setFetching] = useState(true)
     const [hoursLeft, setHoursLeft] = useState(0)
+    const [unreadCount, setUnreadCount] = useState(0)
 
     const now = new Date()
     const month = now.getMonth() + 1
@@ -47,12 +48,14 @@ export default function DashboardPage() {
             fetch(`/api/budgets?userId=${user.id}&month=${month}&year=${year}`),
             fetch(`/api/goals?userId=${user.id}`),
         ])
-        const [expData, budData, goalData] = await Promise.all([
-            expRes.json(), budRes.json(), goalRes.json()
+        const [expData, budData, goalData, notifData] = await Promise.all([
+            expRes.json(), budRes.json(), goalRes.json(),
+            fetch(`/api/notifications?userId=${user.id}`).then(r => r.json()).catch(() => [])
         ])
         setExpenses(Array.isArray(expData) ? expData : [])
         setBudgets(Array.isArray(budData) ? budData : [])
         setGoals(Array.isArray(goalData) ? goalData : [])
+        setUnreadCount(Array.isArray(notifData) ? notifData.filter(n => !n.is_read).length : 0)
 
         const totalExp = (Array.isArray(expData) ? expData : []).reduce((s, e) => s + Number(e.amount), 0)
         const totalBud = (Array.isArray(budData) ? budData : []).reduce((s, b) => s + Number(b.amount), 0)
@@ -110,6 +113,46 @@ export default function DashboardPage() {
         return () => clearInterval(t)
     }, [])
 
+    useEffect(() => {
+        if (!user) return;
+        const initPush = async () => {
+            if ('serviceWorker' in navigator && 'PushManager' in window) {
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    let subscription = await registration.pushManager.getSubscription();
+                    if (!subscription) {
+                        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+                        if (!vapidPublicKey) return;
+
+                        // Helper inside function
+                        const urlBase64ToUint8Array = (base64String) => {
+                            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+                            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+                            const rawData = window.atob(base64);
+                            const outputArray = new Uint8Array(rawData.length);
+                            for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+                            return outputArray;
+                        };
+
+                        subscription = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                        });
+
+                        await fetch('/api/webpush', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ userId: user.id, subscription })
+                        });
+                    }
+                } catch (e) {
+                    console.error('Push setup failed:', e);
+                }
+            }
+        };
+        initPush();
+    }, [user])
+
     async function refreshTip() {
         setTipLoading(true)
         const tipParams = new URLSearchParams({
@@ -158,32 +201,47 @@ export default function DashboardPage() {
             <Sidebar />
             <main className="main-content">
                 <div className="page-inner">
-                    {/* ═══ HERO ═══ */}
-                    <div className="gl-hero">
-                        <div className="gl-hero-bg"></div>
-                        <div className="exp-hero-particles">
-                            <div className="exp-particle exp-p1"></div>
-                            <div className="exp-particle exp-p2"></div>
-                            <div className="exp-particle exp-p3"></div>
-                            <div className="exp-particle exp-p4"></div>
-                            <div className="exp-particle exp-p5"></div>
-                        </div>
-                        <div className="gl-hero-content">
-                            <div className="exp-hero-left">
-                                <div className="exp-hero-icon-wrap">
-                                    <span className="exp-hero-icon" style={{ filter: 'drop-shadow(0 0 12px rgba(245, 158, 11, 0.5))' }}>🏠</span>
-                                    <div className="exp-hero-icon-ring" style={{ borderColor: 'rgba(245, 158, 11, 0.3)', background: 'conic-gradient(from 0deg, transparent, rgba(245, 158, 11, 0.2), transparent, rgba(16, 185, 129, 0.2), transparent)' }}></div>
-                                </div>
-                                <div>
-                                    <h1 className="gl-hero-title">ড্যাশবোর্ড</h1>
-                                    <p className="exp-hero-sub">{monthNames[month - 1]} {year} — আপনার আর্থিক সারসংক্ষেপ</p>
+                    {/* ═══ DATE & REFRESH ═══ */}
+                    {(() => {
+                        const getBengaliDateStr = (date) => {
+                            const d = date.getDate(), m = date.getMonth() + 1, y = date.getFullYear();
+                            let bYear = y - 593; if (m < 4 || (m === 4 && d < 14)) bYear--;
+                            const b = val => String(val).replace(/[0-9]/g, c => '০১২৩৪৫৬৭৮৯'[c]);
+                            let bD, bM;
+                            if (m === 1) { if (d < 14) { bD = d + 17; bM = "পৌষ" } else { bD = d - 13; bM = "মাঘ" } }
+                            else if (m === 2) { if (d < 14) { bD = d + 18; bM = "মাঘ" } else { bD = d - 13; bM = "ফাল্গুন" } }
+                            else if (m === 3) { if (d < 15) { bD = d + 15 + (y % 4 === 0 ? 1 : 0); bM = "ফাল্গুন" } else { bD = d - 14; bM = "চৈত্র" } }
+                            else if (m === 4) { if (d < 14) { bD = d + 17; bM = "চৈত্র" } else { bD = d - 13; bM = "বৈশাখ" } }
+                            else if (m === 5) { if (d < 15) { bD = d + 17; bM = "বৈশাখ" } else { bD = d - 14; bM = "জ্যৈষ্ঠ" } }
+                            else if (m === 6) { if (d < 15) { bD = d + 17; bM = "জ্যৈষ্ঠ" } else { bD = d - 14; bM = "আষাঢ়" } }
+                            else if (m === 7) { if (d < 16) { bD = d + 16; bM = "আষাঢ়" } else { bD = d - 15; bM = "শ্রাবণ" } }
+                            else if (m === 8) { if (d < 16) { bD = d + 16; bM = "শ্রাবণ" } else { bD = d - 15; bM = "ভাদ্র" } }
+                            else if (m === 9) { if (d < 16) { bD = d + 16; bM = "ভাদ্র" } else { bD = d - 15; bM = "আশ্বিন" } }
+                            else if (m === 10) { if (d < 16) { bD = d + 15; bM = "আশ্বিন" } else { bD = d - 15; bM = "কার্তিক" } }
+                            else if (m === 11) { if (d < 16) { bD = d + 16; bM = "কার্তিক" } else { bD = d - 15; bM = "অগ্রহায়ণ" } }
+                            else if (m === 12) { if (d < 16) { bD = d + 15; bM = "অগ্রহায়ণ" } else { bD = d - 15; bM = "পৌষ" } }
+                            return `${b(bD)} ${bM} ${b(bYear)}`;
+                        };
+
+                        return (
+                            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: 24, animation: 'fadeInDown 0.6s ease' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(236, 72, 153, 0.15))', padding: '8px 24px', borderRadius: 30, border: '1px solid rgba(245, 158, 11, 0.3)', boxShadow: '0 0 20px rgba(245, 158, 11, 0.15)', animation: 'pulseGlow 3s infinite alternate' }}>
+                                    <style>{`
+                                        @keyframes pulseGlow {
+                                            0% { box-shadow: 0 0 10px rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); }
+                                            100% { box-shadow: 0 0 25px rgba(236,72,153,0.3); border-color: rgba(236,72,153,0.4); }
+                                        }
+                                    `}</style>
+                                    <span style={{ fontSize: 15, color: '#FCD34D', fontWeight: 600, textShadow: '0 0 8px rgba(252, 211, 77, 0.3)' }}>
+                                        {new Intl.DateTimeFormat('bn-BD', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now)} / {getBengaliDateStr(now)}
+                                    </span>
+                                    <button onClick={fetchData} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 16, transition: 'all 0.3s' }} className="gl-refresh-btn-mini" title="রিফ্রেশ">
+                                        🔄
+                                    </button>
                                 </div>
                             </div>
-                            <button className="gl-refresh-btn" onClick={fetchData}>
-                                🔄 <span>রিফ্রেশ</span>
-                            </button>
-                        </div>
-                    </div>
+                        )
+                    })()}
 
                     {/* Alerts */}
                     {alerts.map((a, i) => (

@@ -17,6 +17,7 @@ const navItems = [
     { href: '/loans', icon: '🤝', label: 'লোন ম্যানেজমেন্ট', color: '#60A5FA' },
     { href: '/calculator', icon: '🧮', label: 'সম্পদ ক্যালকুলেটর', color: '#F97316' },
     { href: '/challenges', icon: '🏆', label: 'সেভিং চ্যালেঞ্জ', color: '#EC4899' },
+    { href: '/notifications', icon: '🔔', label: 'নোটিফিকেশন', color: '#F43F5E' },
 ]
 
 export default function Sidebar() {
@@ -26,6 +27,7 @@ export default function Sidebar() {
     const { sidebarOpen, closeSidebar, toggleSidebar } = useUI()
     const [deferredPrompt, setDeferredPrompt] = useState(null)
     const [showInstallBtn, setShowInstallBtn] = useState(false)
+    const [unreadCount, setUnreadCount] = useState(0)
 
     useEffect(() => {
         const handler = (e) => {
@@ -36,6 +38,14 @@ export default function Sidebar() {
         window.addEventListener('beforeinstallprompt', handler)
         return () => window.removeEventListener('beforeinstallprompt', handler)
     }, [])
+
+    useEffect(() => {
+        if (user) {
+            fetch(`/api/notifications?userId=${user.id}`).then(res => res.json()).then(data => {
+                if (Array.isArray(data)) setUnreadCount(data.filter(n => !n.is_read).length)
+            }).catch(console.error)
+        }
+    }, [user, pathname])
 
     async function installApp() {
         if (!deferredPrompt) return
@@ -62,16 +72,22 @@ export default function Sidebar() {
                 {/* Logo */}
                 <div className="gl-sidebar-logo">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div className="gl-sidebar-brand" onClick={() => router.push('/dashboard')}>
-                            <div className="gl-sidebar-logo-icon">💰</div>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', cursor: 'pointer' }} onClick={() => router.push('/dashboard')}>
+                            <div className="gl-sidebar-logo-icon" style={{ fontSize: 28, background: 'rgba(245, 158, 11, 0.15)', padding: '6px 10px', borderRadius: 12 }}>💰</div>
                             <div>
-                                <h1>স্মার্ট মানি</h1>
-                                <p>আপনার অর্থনৈতিক সহকারী</p>
+                                <h1 style={{ fontSize: 18, color: '#F59E0B', margin: 0, fontWeight: 700 }}>স্মার্ট মানি</h1>
+                                <p style={{ fontSize: 11, color: '#94A3B8', margin: 0 }}>আপনার অর্থনৈতিক সহকারী</p>
                             </div>
                         </div>
-                        <button className="gl-sidebar-toggle" onClick={toggleSidebar}>
-                            {sidebarOpen ? '✕' : '☰'}
-                        </button>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <button onClick={() => { if (window.innerWidth <= 768) closeSidebar(); router.push('/notifications'); }} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 20 }}>🔔</span>
+                                {unreadCount > 0 && <span style={{ position: 'absolute', top: -2, right: -2, background: '#EF4444', color: '#FFF', fontSize: 10, fontWeight: 800, padding: '2px 5px', borderRadius: 10, border: '2px solid rgba(19, 31, 51, 1)' }}>{unreadCount}</span>}
+                            </button>
+                            <button className="gl-sidebar-toggle" onClick={toggleSidebar}>
+                                {sidebarOpen ? '✕' : '☰'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -89,7 +105,12 @@ export default function Sidebar() {
                                 style={isActive ? { '--nav-color': item.color } : {}}
                             >
                                 <span className="gl-nav-icon">{item.icon}</span>
-                                <span>{item.label}</span>
+                                <span style={{ flex: 1 }}>{item.label}</span>
+                                {item.href === '/notifications' && unreadCount > 0 && (
+                                    <span style={{ background: '#EF4444', color: '#FFF', fontSize: 10, fontWeight: 800, padding: '2px 6px', borderRadius: 10, marginLeft: 'auto' }}>
+                                        {unreadCount}
+                                    </span>
+                                )}
                                 {isActive && <div className="gl-nav-active-bar"></div>}
                             </Link>
                         )
