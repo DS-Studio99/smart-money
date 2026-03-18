@@ -1,11 +1,14 @@
 {
-    "name": "Smart Money Manager",
+    "name": "স্মার্ট মানি ম্যানেজার",
     "short_name": "Money",
-    "description": "Smart personal finance manager",
-    "start_url": "/",
+    "description": "আপনার ব্যক্তিগত অর্থ ব্যবস্থাপনা — Smart Money Manager",
+    "start_url": "/dashboard",
+    "scope": "/",
     "display": "standalone",
+    "orientation": "portrait",
     "background_color": "#080e1a",
-    "theme_color": "#F59E0B",
+    "theme_color": "#10B981",
+    "categories": ["finance", "productivity"],
     "icons": [
         {
             "src": "/samrat-avatar.png",
@@ -16,7 +19,22 @@
         {
             "src": "/samrat-avatar.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "খরচ যোগ করুন",
+            "short_name": "খরচ",
+            "url": "/expenses",
+            "icons": [{ "src": "/samrat-avatar.png", "sizes": "96x96" }]
+        },
+        {
+            "name": "নোটিফিকেশন",
+            "short_name": "Alerts",
+            "url": "/notifications",
+            "icons": [{ "src": "/samrat-avatar.png", "sizes": "96x96" }]
         }
     ]
-}
+}

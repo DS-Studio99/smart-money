@@ -6,6 +6,7 @@ import { AISettingsProvider } from '@/context/AISettingsContext'
 import MobileNavWrapper from '@/components/MobileNavWrapper'
 import AIChatFAB from '@/components/AIChatFAB'
 import Watermark from '@/components/Watermark'
+import PushNotificationManager from '@/components/PushNotificationManager'
 
 const hind = Hind_Siliguri({
     subsets: ['bengali'],
@@ -35,6 +36,7 @@ export default function RootLayout({ children }) {
                                 <Watermark />
                             </MobileNavWrapper>
                             <AIChatFAB />
+                            <PushNotificationManager />
                         </AISettingsProvider>
                     </UIProvider>
                 </AuthProvider>

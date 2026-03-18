@@ -81,11 +81,17 @@ CREATE TABLE IF NOT EXISTS loans (
   issue_date DATE NOT NULL,
   due_date DATE,
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed')),
+  payment_history JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE loans ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can manage own loans" ON loans FOR ALL USING (auth.uid() = user_id);
+
+-- ⚠️ Migration: Add payment_history to existing loans table
+-- Run this if the table already exists:
+ALTER TABLE loans ADD COLUMN IF NOT EXISTS payment_history JSONB DEFAULT '[]'::jsonb;
+
 
 -- 6. Settings Table
 CREATE TABLE IF NOT EXISTS app_settings (

@@ -6,6 +6,217 @@ import { useAISettings } from '@/context/AISettingsContext'
 import Sidebar from '@/components/Sidebar'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
+const CAT_ICONS = { '\u09AC\u09BE\u099C\u09BE\u09B0 \u0996\u09B0\u099A': '\uD83C\uDF5A', '\u09AC\u09BE\u09B8\u09BE \u09AD\u09BE\u09DC\u09BE': '\uD83C\uDFE0', '\u09AE\u09BE\u09B8\u09BF\u0995 \u09AC\u09BF\u09B2': '\uD83E\uDDFE', '\u09AF\u09BE\u09A4\u09BE\u09AF\u09BE\u09A4': '\uD83D\uDE0C', '\u099A\u09BF\u0995\u09BF\u09CE\u09B8\u09BE': '\uD83D\uDC8A', '\u09B6\u09BF\u0995\u09CD\u09B7\u09BE': '\uD83D\uDCDA', '\u09AA\u09BE\u09B0\u09B6\u09A8\u09BE\u09B2 \u0996\u09B0\u099A': '\uD83D\uDC86', '\u09AE\u09CB\u099F\u09B0\u09B8\u09BE\u0987\u0995\u09C7\u09B2 \u0996\u09B0\u099A': '\uD83C\uDFCD\uFE0F', '\u09AC\u09BF\u09A8\u09CB\u09A6\u09A8': '\uD83C\uDFAC', '\u0995\u09C7\u09A8\u09BE\u0995\u09BE\u099F\u09BE': '\uD83D\uDECD\uFE0F', '\u0985\u09A8\u09CD\u09AF\u09BE\u09A8\u09CD\u09AF': '\uD83D\uDCCC' }
+
+function generateMonthlyPDF({ report, month, year, monthNames, score, scoreLabel, dailyAvg, profile }) {
+    if (!report) return
+    const pieData = Object.entries(report.categoryBreakdown || {}).sort((a, b) => b[1] - a[1])
+    const totalExp = report.totalExpenses || 0
+    const totalIncome = report.monthlyIncome || 0
+    const totalBudget = report.totalBudget || 0
+    const totalSaving = report.totalSaving || 0
+    const savingsRate = totalIncome > 0 ? Math.round((totalSaving / totalIncome) * 100) : 0
+    const scoreColor = score >= 70 ? '#10b981' : score >= 40 ? '#f59e0b' : '#ef4444'
+
+    const pdfHtml = `<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<title>\u09AE\u09BE\u09B8\u09BF\u0995 \u0986\u09B0\u09CD\u09A5\u09BF\u0995 \u09B0\u09BF\u09AA\u09CB\u09B0\u09CD\u099F - ${monthNames[month-1]} ${year}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Hind Siliguri','Inter',sans-serif; background:#fff; color:#1a1a2e; font-size:13px; }
+.container { max-width:950px; margin:0 auto; }
+.header { background:linear-gradient(135deg,#10b981 0%,#3b82f6 50%,#8b5cf6 100%); color:white; padding:40px 50px; position:relative; overflow:hidden; }
+.header::before { content:''; position:absolute; top:-40%; right:-10%; width:280px; height:280px; background:rgba(255,255,255,0.07); border-radius:50%; }
+.header::after { content:''; position:absolute; bottom:-50%; left:-10%; width:220px; height:220px; background:rgba(255,255,255,0.05); border-radius:50%; }
+.h-top { display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1; }
+.brand { display:flex; align-items:center; gap:14px; }
+.brand-icon { width:52px; height:52px; background:rgba(255,255,255,0.2); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:26px; }
+.brand-name { font-size:22px; font-weight:700; }
+.brand-sub { font-size:12px; opacity:0.8; margin-top:2px; }
+.date-box { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); border-radius:12px; padding:10px 18px; text-align:right; font-size:12px; position:relative; z-index:1; }
+.h-main { margin-top:28px; position:relative; z-index:1; }
+.h-title { font-size:34px; font-weight:800; letter-spacing:-1px; margin-bottom:6px; }
+.h-sub { font-size:14px; opacity:0.85; }
+.h-tags { display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+.tag { background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.3); border-radius:20px; padding:4px 14px; font-size:11px; font-weight:600; }
+.score-banner { display:flex; align-items:center; gap:20px; background:#f0fdf4; border:2px solid #bbf7d0; border-radius:16px; padding:20px 30px; margin:30px 50px 0; }
+.score-circle { width:80px; height:80px; border-radius:50%; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Inter',sans-serif; font-weight:800; font-size:26px; color:white; flex-shrink:0; }
+.score-info h3 { font-size:18px; font-weight:700; color:#065f46; margin-bottom:4px; }
+.score-info p { font-size:13px; color:#6b7280; }
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:24px 50px; background:#f8faff; border-bottom:2px solid #eef2ff; }
+.stat-card { background:white; border-radius:16px; padding:20px; box-shadow:0 4px 20px rgba(0,0,0,0.06); border:1px solid #eef2ff; }
+.stat-icon { font-size:24px; margin-bottom:8px; }
+.stat-label { font-size:11px; color:#6b7280; font-weight:500; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+.stat-value { font-family:'Inter',sans-serif; font-size:20px; font-weight:800; }
+.section { padding:28px 50px; }
+.section-title { font-size:16px; font-weight:700; color:#1a1a2e; border-bottom:2px solid #eef2ff; padding-bottom:10px; margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+.cat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.cat-item { display:flex; align-items:center; gap:12px; padding:14px 16px; background:#f8faff; border-radius:12px; border:1px solid #eef2ff; }
+.cat-icon { width:38px; height:38px; border-radius:10px; background:#eef2ff; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.cat-body { flex:1; }
+.cat-name { font-size:13px; font-weight:600; color:#374151; }
+.cat-bar-bg { height:5px; background:#e5e7eb; border-radius:3px; margin-top:5px; }
+.cat-bar { height:5px; border-radius:3px; background:linear-gradient(90deg,#10b981,#3b82f6); }
+.cat-pct { font-size:11px; color:#6b7280; }
+.cat-amount { font-family:'Inter',sans-serif; font-size:14px; font-weight:700; color:#1a1a2e; }
+table { width:100%; border-collapse:collapse; }
+thead tr { background:linear-gradient(135deg,#10b981,#3b82f6); color:white; }
+thead th { padding:13px 16px; text-align:left; font-size:12px; font-weight:600; letter-spacing:0.5px; }
+thead th:last-child { text-align:right; }
+tbody tr:nth-child(even) { background:#f8faff; }
+tbody td { padding:11px 16px; font-size:13px; color:#374151; border-bottom:1px solid #f3f4f6; }
+tbody td:last-child { text-align:right; font-family:'Inter',sans-serif; font-weight:700; }
+.progress-wrap { display:flex; align-items:center; gap:8px; }
+.bar-bg { flex:1; height:6px; background:#e5e7eb; border-radius:3px; }
+.bar-fill { height:6px; border-radius:3px; }
+.safe { background:#10b981; } .warn { background:#f59e0b; } .danger { background:#ef4444; }
+.ai-box { background:linear-gradient(135deg,#f0fdf4,#eff6ff); border:1px solid #bbf7d0; border-radius:16px; padding:24px; margin:0 50px 30px; line-height:1.9; white-space:pre-wrap; font-size:13.5px; color:#1e293b; }
+.footer { background:#1e293b; color:#94a3b8; padding:20px 50px; display:flex; justify-content:space-between; align-items:center; }
+.footer-brand { font-weight:700; color:#f1f5f9; font-size:15px; }
+.alert { padding:10px 16px; border-radius:10px; margin-bottom:8px; font-size:13px; }
+.alert-danger { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; }
+.alert-warn { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+@media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="h-top">
+      <div class="brand">
+        <div class="brand-icon">📈</div>
+        <div>
+          <div class="brand-name">Smart Money</div>
+          <div class="brand-sub">\u09AC\u09CD\u09AF\u0995\u09CD\u09A4\u09BF\u0997\u09A4 \u0986\u09B0\u09CD\u09A5\u09BF\u0995 \u09AC\u09CD\u09AF\u09AC\u09B8\u09CD\u09A5\u09BE\u09AA\u09A8\u09BE</div>
+        </div>
+      </div>
+      <div class="date-box">
+        <div>\u09A4\u09C8\u09B0\u09BF\u09B0 \u09A4\u09BE\u09B0\u09BF\u0996</div>
+        <div style="font-weight:700;margin-top:4px">${new Date().toLocaleDateString('bn-BD')}</div>
+      </div>
+    </div>
+    <div class="h-main">
+      <div class="h-title">\u09AE\u09BE\u09B8\u09BF\u0995 \u0986\u09B0\u09CD\u09A5\u09BF\u0995 \u09B0\u09BF\u09AA\u09CB\u09B0\u09CD\u099F</div>
+      <div class="h-sub">${profile?.name ? profile.name + '-\u098F\u09B0 \u09B8\u09AE\u09CD\u09AA\u09C2\u09B0\u09CD\u09A3 \u0986\u09B0\u09CD\u09A5\u09BF\u0995 \u09AC\u09BF\u09B6\u09CD\u09B2\u09C7\u09B7\u09A3' : '\u09B8\u09AE\u09CD\u09AA\u09C2\u09B0\u09CD\u09A3 \u0986\u09B0\u09CD\u09A5\u09BF\u0995 \u09AC\u09BF\u09B6\u09CD\u09B2\u09C7\u09B7\u09A3'}</div>
+      <div class="h-tags">
+        <span class="tag">📅 ${monthNames[month-1]} ${year}</span>
+        <span class="tag">📊 স্বাস্থ্য স্কোর: ${score}/100</span>
+        <span class="tag">✨ ${scoreLabel}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="score-banner">
+    <div class="score-circle" style="background:${scoreColor}">${score}
+      <span style="font-size:12px;font-weight:500">/100</span>
+    </div>
+    <div class="score-info">
+      <h3>\u0986\u09B0\u09CD\u09A5\u09BF\u0995 \u09B8\u09CD\u09AC\u09BE\u09B8\u09CD\u09A5\u09CD\u09AF: ${scoreLabel}</h3>
+      <p>${score >= 70 ? '\u0986\u09AA\u09A8\u09BF \u0985\u09B0\u09CD\u09A5 \u09AC\u09CD\u09AF\u09AC\u09B8\u09CD\u09A5\u09BE\u09AA\u09A8\u09BE\u09AF\u09BC \u0996\u09C1\u09AC\u0987 \u09A6\u0995\u09CD\u09B7! \u09B8\u09BE\u09A7\u09C1\u09AC\u09BE\u09A6\u00F0\u009F\u008E\u0089' : score >= 40 ? '\u0986\u09B0\u09CB \u09B8\u099E\u09CD\u099A\u09AF\u09BC \u0995\u09B0\u09BE\u09B0 \u099A\u09C7\u09B7\u09CD\u099F\u09BE \u0995\u09B0\u09C1\u09A8 \u0964 \u09AD\u09BE\u09B2\u09CB \u09B9\u09AC\u09C7\u0964' : '\u0996\u09B0\u099A \u0995\u09AE\u09BE\u09A8\u09CB \u099C\u09B0\u09C1\u09B0\u09BF \u0964 \u09AC\u09BE\u099C\u09C7\u099F \u09AE\u09C7\u09A8\u09C7 \u099A\u09B2\u09C1\u09A8\u0964'}</p>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">💰</div>
+      <div class="stat-label">\u09AE\u09CB\u099F \u0986\u09AF\u09BC</div>
+      <div class="stat-value" style="color:#f59e0b">৳${totalIncome.toLocaleString('bn-BD')}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💸</div>
+      <div class="stat-label">\u09AE\u09CB\u099F \u0996\u09B0\u099C</div>
+      <div class="stat-value" style="color:#ef4444">৳${totalExp.toLocaleString('bn-BD')}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💎</div>
+      <div class="stat-label">\u09AE\u09CB\u099F \u09B8\u099E\u09CD\u099A\u09AF\u09BC</div>
+      <div class="stat-value" style="color:#10b981">৳${Math.abs(totalSaving).toLocaleString('bn-BD')}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div class="stat-label">\u09B8\u099E\u09CD\u099A\u09AF\u09BC \u09B9\u09BE\u09B0</div>
+      <div class="stat-value" style="color:#8b5cf6">${savingsRate}%</div>
+    </div>
+  </div>
+
+  ${report.overBudget?.length > 0 ? `
+  <div class="section" style="padding-bottom:0">
+    ${report.overBudget.map(b => `<div class="alert alert-danger">⚠️ বাজেট অতিক্রম: ${b.category} — ৳${Number(b.spent).toLocaleString('bn-BD')} খরচ হয়েছে (বাজেট ছিল ৳${Number(b.budget).toLocaleString('bn-BD')})</div>`).join('')}
+  </div>` : ''}
+
+  ${pieData.length > 0 ? `
+  <div class="section">
+    <div class="section-title">📊 ক্যাটাগরি ভিত্তিক খরচ</div>
+    <div class="cat-grid">
+      ${pieData.map(([cat, amount]) => {
+        const pct = totalExp > 0 ? Math.round((amount / totalExp) * 100) : 0
+        return `<div class="cat-item">
+          <div class="cat-icon">${CAT_ICONS[cat] || '📌'}</div>
+          <div class="cat-body">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="cat-name">${cat}</div>
+              <div class="cat-amount">৳${Number(amount).toLocaleString('bn-BD')}</div>
+            </div>
+            <div class="cat-bar-bg"><div class="cat-bar" style="width:${pct}%"></div></div>
+            <div class="cat-pct">${pct}% মোট খরচের</div>
+          </div>
+        </div>`
+      }).join('')}
+    </div>
+  </div>` : ''}
+
+  ${report.budgetStatus?.length > 0 ? `
+  <div class="section">
+    <div class="section-title">📋 বাজেট বনাম খরচ বিশ্লেষণ</div>
+    <table>
+      <thead><tr><th>ক্যাটাগরি</th><th>বাজেট</th><th>খরচ</th><th>বাকি</th><th>অবস্থান</th></tr></thead>
+      <tbody>
+        ${report.budgetStatus.map(b => `
+        <tr>
+          <td>${b.category}</td>
+          <td>৳${Number(b.budget).toLocaleString('bn-BD')}</td>
+          <td style="color:#ef4444">৳${Number(b.spent).toLocaleString('bn-BD')}</td>
+          <td style="color:#10b981">৳${Math.max(0,b.remaining).toLocaleString('bn-BD')}</td>
+          <td>
+            <div class="progress-wrap">
+              <div class="bar-bg"><div class="bar-fill ${b.pct>=100?'danger':b.pct>=75?'warn':'safe'}" style="width:${Math.min(100,b.pct)}%"></div></div>
+              <span style="font-size:11px;font-family:Inter">${b.pct}%</span>
+            </div>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>` : ''}
+
+  ${report.aiInsights ? `
+  <div>
+    <div class="section-title" style="padding:0 50px 12px;margin-bottom:0">🤖 AI আর্থিক বিশ্লেষণ</div>
+    <div class="ai-box">${report.aiInsights}</div>
+  </div>` : ''}
+
+  <div class="footer">
+    <div>
+      <div class="footer-brand">💎 Smart Money</div>
+      <div style="font-size:11px;margin-top:2px">ব্যক্তিগত আর্থিক ব্যবস্থাপনা সিস্টেম</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:11px">রিপোর্ট মাস: ${monthNames[month-1]} ${year}</div>
+      <div style="font-size:11px">তৈরি: ${new Date().toLocaleString('bn-BD')}</div>
+    </div>
+  </div>
+</div>
+<script>window.onload=()=>window.print()</script>
+</body></html>`
+
+    const blob = new Blob([pdfHtml], { type: 'text/html;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const win = window.open(url, '_blank')
+    if (!win) alert('পপআপ ব্লক হয়েছে। অনুগ্রহ করে পপআপ অনুমতি দিন।')
+}
+
 const COLORS = ['#F97316', '#8B5CF6', '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#EC4899', '#94A3B8']
 
 export default function ReportPage() {
@@ -81,7 +292,7 @@ export default function ReportPage() {
                                 </select>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 6px 24px rgba(16,185,129,0.4)' }} onClick={fetchReport}>📊 <span>রিপোর্ট দেখান</span><div className="exp-add-btn-shine"></div></button>
-                                    <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 6px 24px rgba(139,92,246,0.4)' }} onClick={() => window.print()}>📥 <span>PDF</span><div className="exp-add-btn-shine"></div></button>
+                                     <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 6px 24px rgba(139,92,246,0.4)', opacity: !report ? 0.5 : 1 }} disabled={!report} onClick={() => generateMonthlyPDF({ report, month, year, monthNames, score, scoreLabel, dailyAvg, profile })}> <span>PDF রপরট</span><div className="exp-add-btn-shine"></div></button>
                                 </div>
                             </div>
                         </div>
