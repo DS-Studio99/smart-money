@@ -106,3 +106,31 @@ CREATE POLICY "Users can update settings" ON app_settings FOR ALL USING (auth.ui
 
 -- Insert default setting for signup
 INSERT INTO app_settings (key, value) VALUES ('signup_enabled', 'true') ON CONFLICT (key) DO NOTHING;
+
+-- 7. Notifications Table
+CREATE TABLE IF NOT EXISTS notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  type TEXT DEFAULT 'info',
+  url TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own notifications" ON notifications FOR ALL USING (auth.uid() = user_id);
+
+-- 8. Push Subscriptions Table
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  endpoint TEXT UNIQUE NOT NULL,
+  keys JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can manage own push subscriptions" ON push_subscriptions FOR ALL USING (auth.uid() = user_id);
