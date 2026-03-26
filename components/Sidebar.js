@@ -15,6 +15,7 @@ const navItems = [
     { href: '/report', icon: '📈', label: 'মাসিক রিপোর্ট', color: '#10B981' },
     { href: '/savings', icon: '🏦', label: 'প্রকৃত সঞ্চয় (Vault)', color: '#14B8A6' },
     { href: '/loans', icon: '🤝', label: 'লোন ম্যানেজমেন্ট', color: '#60A5FA' },
+    { href: '/credit', icon: '🏪', label: 'দোকান বাকি', color: '#F59E0B' },
     { href: '/calculator', icon: '🧮', label: 'সম্পদ ক্যালকুলেটর', color: '#F97316' },
     { href: '/challenges', icon: '🏆', label: 'সেভিং চ্যালেঞ্জ', color: '#EC4899' },
     { href: '/notifications', icon: '🔔', label: 'নোটিফিকেশন', color: '#F43F5E' },
