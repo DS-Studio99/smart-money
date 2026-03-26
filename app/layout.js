@@ -7,6 +7,7 @@ import MobileNavWrapper from '@/components/MobileNavWrapper'
 import AIChatFAB from '@/components/AIChatFAB'
 import Watermark from '@/components/Watermark'
 import PushNotificationManager from '@/components/PushNotificationManager'
+import PinLockWrapper from '@/components/PinLockWrapper'
 
 const hind = Hind_Siliguri({
     subsets: ['bengali'],
@@ -29,16 +30,18 @@ export default function RootLayout({ children }) {
             </head>
             <body className={hind.className}>
                 <AuthProvider>
-                    <UIProvider>
-                        <AISettingsProvider>
-                            <MobileNavWrapper>
-                                {children}
-                                <Watermark />
-                            </MobileNavWrapper>
-                            <AIChatFAB />
-                            <PushNotificationManager />
-                        </AISettingsProvider>
-                    </UIProvider>
+                    <PinLockWrapper>
+                        <UIProvider>
+                            <AISettingsProvider>
+                                <MobileNavWrapper>
+                                    {children}
+                                    <Watermark />
+                                </MobileNavWrapper>
+                                <AIChatFAB />
+                                <PushNotificationManager />
+                            </AISettingsProvider>
+                        </UIProvider>
+                    </PinLockWrapper>
                 </AuthProvider>
             </body>
         </html>

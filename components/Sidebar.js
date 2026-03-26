@@ -9,6 +9,7 @@ import Image from 'next/image'
 
 const navItems = [
     { href: '/dashboard', icon: '🏠', label: 'ড্যাশবোর্ড', color: '#F59E0B' },
+    { href: '/income', icon: '💰', label: 'আয় ব্যবস্থাপনা', color: '#10B981' },
     { href: '/expenses', icon: '💸', label: 'খরচ ট্র্যাকার', color: '#EF4444' },
     { href: '/budget', icon: '📊', label: 'বাজেট ম্যানেজার', color: '#3B82F6' },
     { href: '/goals', icon: '🎯', label: 'লক্ষ্য ও সঞ্চয়', color: '#A855F7' },

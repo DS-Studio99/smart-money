@@ -435,6 +435,11 @@ export default function ExpensesPage() {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                                <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 6px 24px rgba(139,92,246,0.4)' }} onClick={() => router.push('/expense-split')}>
+                                    <span className="exp-add-btn-icon">🤝</span>
+                                    <span>খরচ ভাগ</span>
+                                    <div className="exp-add-btn-shine"></div>
+                                </button>
                                 <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6D28D9)', boxShadow: '0 6px 24px rgba(139,92,246,0.4)' }} onClick={() => setShowPdfModal(true)}>
                                     <span className="exp-add-btn-icon">📄</span>
                                     <span>PDF রিপোর্ট</span>
