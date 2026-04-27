@@ -137,21 +137,28 @@ export default function IncomePage() {
     async function handleSaveSource(ev) {
         ev.preventDefault()
         setSaving(true)
-        if (editSource) {
-            await fetch(`/api/income-sources/${editSource.id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(sourceForm)
+        try {
+            const payload = { ...sourceForm, user_id: user.id }
+            const url = editSource ? `/api/income-sources/${editSource.id}` : '/api/income-sources'
+            const method = editSource ? 'PUT' : 'POST'
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             })
-        } else {
-            await fetch('/api/income-sources', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...sourceForm, user_id: user.id })
-            })
+
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Server Error')
+
+            setShowSourceModal(false)
+            setEditSource(null)
+            fetchSources()
+        } catch (err) {
+            alert('Error: ' + err.message)
+        } finally {
+            setSaving(false)
         }
-        setSaving(false)
-        setShowSourceModal(false)
-        setEditSource(null)
-        fetchSources()
     }
 
     async function handleDeleteSource(id) {
@@ -201,7 +208,7 @@ export default function IncomePage() {
 
     function openAddEntry() {
         setEditEntry(null)
-        setEntryForm({ source_id: sources[0]?.id || '', amount: '', date: now.toISOString().split('T')[0], note: '' })
+        setEntryForm({ source_id: '', amount: '', date: now.toISOString().split('T')[0], note: '' })
         setShowEntryModal(true)
     }
     function openEditEntry(e) {
@@ -217,33 +224,32 @@ export default function IncomePage() {
                 <div className="page-inner">
 
                     {/* ═══ HERO ═══ */}
-                    <div className="inc-hero">
+                    <div className="inc-hero" style={{ padding: '20px', marginBottom: '20px' }}>
                         <div className="inc-hero-bg"></div>
                         <div className="inc-hero-particles">
                             {[1,2,3,4,5].map(i => <div key={i} className={`inc-particle inc-p${i}`}></div>)}
                         </div>
                         <div className="inc-hero-content">
-                            <div className="exp-hero-left">
-                                <div className="exp-hero-icon-wrap">
-                                    <span className="exp-hero-icon">💰</span>
-                                    <div className="exp-hero-icon-ring"></div>
+                            <div className="exp-hero-left" style={{ gap: '12px' }}>
+                                <div className="exp-hero-icon-wrap" style={{ width: 44, height: 44 }}>
+                                    <span className="exp-hero-icon" style={{ fontSize: 24 }}>💰</span>
                                 </div>
                                 <div>
-                                    <h1 className="exp-hero-title" style={{ background: 'linear-gradient(135deg, #F1F5F9, #34D399, #10B981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                    <h1 className="exp-hero-title" style={{ fontSize: 22, background: 'linear-gradient(135deg, #F1F5F9, #34D399, #10B981)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                                         আয় ব্যবস্থাপনা
                                     </h1>
-                                    <p className="exp-hero-sub">একাধিক আয়ের উৎস ট্র্যাক করুন ও গ্রোথ দেখুন</p>
+                                    <p className="exp-hero-sub" style={{ fontSize: 13, marginTop: 2 }}>একাধিক আয়ের উৎস ট্র্যাক ও গ্রোথ দেখুন</p>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                                <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #059669, #047857)', boxShadow: '0 6px 24px rgba(5,150,105,0.4)' }} onClick={openAddSource}>
-                                    <span className="exp-add-btn-icon">⚙️</span>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <button className="exp-add-btn" style={{ padding: '8px 14px', minHeight: 'unset', fontSize: 13, background: 'linear-gradient(135deg, #059669, #047857)', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }} onClick={openAddSource}>
+                                    <span style={{ fontSize: 14 }}>⚙️</span>
                                     <span>নতুন সোর্স</span>
                                     <div className="exp-add-btn-shine"></div>
                                 </button>
-                                <button className="exp-add-btn" style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 6px 24px rgba(16,185,129,0.4)' }} onClick={openAddEntry} disabled={sources.length === 0}>
-                                    <span className="exp-add-btn-icon">+</span>
-                                    <span>আয় যোগ করুন</span>
+                                <button className="exp-add-btn" style={{ padding: '8px 14px', minHeight: 'unset', fontSize: 13, background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }} onClick={openAddEntry} disabled={sources.length === 0}>
+                                    <span style={{ fontSize: 14 }}>+</span>
+                                    <span style={{ whiteSpace: 'nowrap' }}>আয় যোগ করুন</span>
                                     <div className="exp-add-btn-shine"></div>
                                 </button>
                             </div>

@@ -1,12 +1,10 @@
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase-server'
+import { NextResponse } from 'next/server'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+const supabase = createAdminClient()
 
 export async function PUT(req, { params }) {
-    const { id } = params
+    const { id } = await params
     const body = await req.json()
     const { name, icon, type, color, is_active } = body
 
@@ -17,13 +15,13 @@ export async function PUT(req, { params }) {
         .select()
         .single()
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json(data)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data)
 }
 
 export async function DELETE(req, { params }) {
-    const { id } = params
+    const { id } = await params
     const { error } = await supabase.from('income_sources').delete().eq('id', id)
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ success: true })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
 }

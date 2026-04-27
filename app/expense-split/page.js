@@ -115,22 +115,37 @@ export default function ExpenseSplitPage() {
         ev.preventDefault()
         if (members.length < 2) { alert('কমপক্ষে ২ জন সদস্য যোগ করুন।'); return }
         setSaving(true)
-        const payload = {
-            title: groupForm.title,
-            description: groupForm.description,
-            total_amount: groupForm.total_amount,
-            members: members.map(m => ({ name: m.name, paid: parseFloat(m.paid) || 0 }))
+        try {
+            const payload = {
+                title: groupForm.title,
+                description: groupForm.description,
+                total_amount: parseFloat(groupForm.total_amount) || 0,
+                members: members.map(m => ({ name: m.name, paid: parseFloat(m.paid) || 0 }))
+            }
+            
+            const url = editGroup ? `/api/expense-splits/${editGroup.id}` : '/api/expense-splits'
+            const method = editGroup ? 'PUT' : 'POST'
+            const bodyData = editGroup ? payload : { ...payload, created_by: user.id }
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bodyData)
+            })
+
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Server error')
+
+            if (editGroup && selectedSplit?.id === editGroup.id) {
+                setSelectedSplit(data)
+            }
+            setShowGroupModal(false)
+            fetchSplits()
+        } catch (err) {
+            alert('Error: ' + err.message)
+        } finally {
+            setSaving(false)
         }
-        if (editGroup) {
-            const res = await fetch(`/api/expense-splits/${editGroup.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-            const updated = await res.json()
-            if (selectedSplit?.id === editGroup.id) setSelectedSplit(updated)
-        } else {
-            await fetch('/api/expense-splits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, created_by: user.id }) })
-        }
-        setSaving(false)
-        setShowGroupModal(false)
-        fetchSplits()
     }
 
     async function handleDeleteGroup(id) {
@@ -150,8 +165,8 @@ export default function ExpenseSplitPage() {
         setSaving(true)
         const newSettlement = {
             id: Date.now().toString(),
-            from: settleMember.name,
-            to: settleMember.owedTo,
+            from: settleMember.from,
+            to: settleMember.to,
             amount: parseFloat(settleAmount),
             date: new Date().toISOString().split('T')[0]
         }
@@ -315,7 +330,7 @@ export default function ExpenseSplitPage() {
                                                 </div>
                                                 <div className="split-members-preview">
                                                     {(split.members || []).slice(0, 4).map((m, i) => (
-                                                        <div key={i} className="split-member-avatar-sm" title={m.name}>{m.name.charAt(0).toUpperCase()}</div>
+                                                        <div key={i} className="split-member-avatar-sm" title={m.name}>{(m.name || '?').charAt(0).toUpperCase()}</div>
                                                     ))}
                                                     {(split.members || []).length > 4 && <div className="split-member-avatar-sm">+{(split.members || []).length - 4}</div>}
                                                 </div>
@@ -355,9 +370,9 @@ export default function ExpenseSplitPage() {
                                     {calcSplitDetails(selectedSplit).map((m, i) => (
                                         <div key={i} className="split-member-row">
                                             <div className="split-member-left">
-                                                <div className="split-member-avatar-lg">{m.name.charAt(0)}</div>
+                                                <div className="split-member-avatar-lg">{(m.name || '?').charAt(0)}</div>
                                                 <div>
-                                                    <div className="split-member-name">{m.name}</div>
+                                                    <div className="split-member-name">{m.name || 'অজানা'}</div>
                                                     <div className="split-member-sub">জমা: ৳{m.paid.toLocaleString()} | শেয়ার: ৳{m.share.toLocaleString()}</div>
                                                 </div>
                                             </div>
@@ -380,18 +395,18 @@ export default function ExpenseSplitPage() {
                                         getOwingPairs(selectedSplit).map((pair, i) => (
                                             <div key={i} className="split-owing-row">
                                                 <div className="split-owing-from">
-                                                    <div className="split-member-avatar-sm">{pair.from.charAt(0)}</div>
-                                                    <span>{pair.from}</span>
+                                                    <div className="split-member-avatar-sm">{(pair.from || '?').charAt(0)}</div>
+                                                    <span>{pair.from || 'অজানা'}</span>
                                                 </div>
                                                 <div className="split-owing-arrow">
                                                     <span>→ ৳{pair.amount.toLocaleString('bn-BD')} →</span>
                                                 </div>
                                                 <div className="split-owing-to">
-                                                    <span>{pair.to}</span>
-                                                    <div className="split-member-avatar-sm">{pair.to.charAt(0)}</div>
+                                                    <span>{pair.to || 'অজানা'}</span>
+                                                    <div className="split-member-avatar-sm">{(pair.to || '?').charAt(0)}</div>
                                                 </div>
                                                 <button className="split-settle-btn" onClick={() => {
-                                                    setSettleMember({ ...pair, owedTo: pair.to })
+                                                    setSettleMember(pair)
                                                     setSettleAmount(pair.amount.toString())
                                                     setShowSettleModal(true)
                                                 }}>
@@ -407,19 +422,23 @@ export default function ExpenseSplitPage() {
                             {(selectedSplit.settlements || []).length > 0 && (
                                 <div className="split-section-card" style={{ marginTop: 16 }}>
                                     <div className="split-section-title">📋 সেটেলমেন্ট হিস্ট্রি</div>
-                                    {(selectedSplit.settlements || []).map((s, i) => (
+                                    {(selectedSplit.settlements || []).map((s, i) => {
+                                        const fromName = s.from || 'অজানা'
+                                        const toName = s.to || 'অজানা'
+                                        return (
                                         <div key={i} className="split-settle-row">
-                                            <div className="split-member-avatar-sm">{s.from.charAt(0)}</div>
+                                            <div className="split-member-avatar-sm">{fromName.charAt(0)}</div>
                                             <div style={{ flex: 1 }}>
-                                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{s.from}</span>
+                                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{fromName}</span>
                                                 <span style={{ color: 'var(--text-muted)', margin: '0 8px' }}>→</span>
-                                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{s.to}</span>
+                                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{toName}</span>
                                                 <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 8 }}>{s.date}</span>
                                             </div>
                                             <span style={{ color: '#34D399', fontWeight: 700 }}>৳{Number(s.amount).toLocaleString('bn-BD')}</span>
                                             <button className="inc-source-del-btn" onClick={() => deleteSettlement(s)}>🗑️</button>
                                         </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -449,8 +468,8 @@ export default function ExpenseSplitPage() {
                         <div className="split-members-list">
                             {members.map((m, i) => (
                                 <div key={i} className="split-member-input-row">
-                                    <div className="split-member-avatar-sm">{m.name.charAt(0).toUpperCase()}</div>
-                                    <span style={{ flex: 1, color: 'var(--text-primary)', fontSize: 14 }}>{m.name}</span>
+                                    <div className="split-member-avatar-sm">{(m.name || '?').charAt(0).toUpperCase()}</div>
+                                    <span style={{ flex: 1, color: 'var(--text-primary)', fontSize: 14 }}>{m.name || 'অজানা'}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>জমা: ৳</span>
                                         <input

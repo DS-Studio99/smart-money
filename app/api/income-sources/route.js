@@ -1,14 +1,12 @@
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase-server'
+import { NextResponse } from 'next/server'
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+const supabase = createAdminClient()
 
 export async function GET(req) {
     const { searchParams } = new URL(req.url)
     const userId = searchParams.get('userId')
-    if (!userId) return Response.json([], { status: 400 })
+    if (!userId) return NextResponse.json([], { status: 400 })
 
     const { data, error } = await supabase
         .from('income_sources')
@@ -16,14 +14,14 @@ export async function GET(req) {
         .eq('user_id', userId)
         .order('created_at', { ascending: true })
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json(data || [])
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data || [])
 }
 
 export async function POST(req) {
     const body = await req.json()
     const { user_id, name, icon, type, color } = body
-    if (!user_id || !name) return Response.json({ error: 'Missing fields' }, { status: 400 })
+    if (!user_id || !name) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
     const { data, error } = await supabase
         .from('income_sources')
@@ -31,6 +29,6 @@ export async function POST(req) {
         .select()
         .single()
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json(data)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json(data)
 }

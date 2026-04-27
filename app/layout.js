@@ -8,6 +8,7 @@ import AIChatFAB from '@/components/AIChatFAB'
 import Watermark from '@/components/Watermark'
 import PushNotificationManager from '@/components/PushNotificationManager'
 import PinLockWrapper from '@/components/PinLockWrapper'
+import SplashScreen from '@/components/SplashScreen'
 
 const hind = Hind_Siliguri({
     subsets: ['bengali'],
@@ -29,6 +30,7 @@ export default function RootLayout({ children }) {
                 <link rel="apple-touch-icon" href="/samrat-avatar.png" />
             </head>
             <body className={hind.className}>
+                <SplashScreen />
                 <AuthProvider>
                     <PinLockWrapper>
                         <UIProvider>
