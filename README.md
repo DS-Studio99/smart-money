@@ -1,1 +1,1 @@
-"# SM smart-money" 
+"# SM - smart-money" 
